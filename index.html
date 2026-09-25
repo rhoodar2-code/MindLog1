@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7564e8">
+<title>Mindlog</title>
+<style>
+:root{--bg:#f7f6ff;--card:#fff;--text:#202044;--muted:#777795;--accent:#7564e8;--line:#ecebfa}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+.app{max-width:480px;margin:auto;min-height:100vh;padding-bottom:82px}
+header{padding:24px 20px 10px;display:flex;align-items:center;justify-content:center}
+.main-header{flex-direction:column;text-align:center}
+.logo{font-size:32px;font-weight:800;letter-spacing:-.5px}
+.today-total{margin-top:5px;color:var(--muted);font-size:15px;font-weight:600}
+.icon{border:0;background:white;border-radius:14px;padding:10px 12px;font-size:20px;box-shadow:0 3px 14px #2b256010}
+.screen{display:none;padding:10px 18px}.screen.active{display:block}
+.moods{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+.mood{border:0;border-radius:22px;padding:20px 8px;background:var(--mood-bg);color:#222;min-height:145px;font-size:17px;font-weight:700;box-shadow:0 6px 18px #332c6610;cursor:pointer;transition:.12s}
+.mood:active{transform:scale(.96)} .emoji{display:block;font-size:48px;margin-bottom:10px}
+.note{text-align:center;margin:22px 0;color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin:14px 0;box-shadow:0 5px 18px #332c6608}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.tab{border:0;background:#f0eff9;padding:11px 4px;border-radius:12px;color:#555274;font-weight:600}.tab.active{background:var(--accent);color:white}
+.stats-main{text-align:center;padding:20px}.donut{width:190px;height:190px;border-radius:50%;margin:8px auto 18px;background:conic-gradient(#66d39a 0 25%,#ffd467 25% 45%,#ff756f 45% 63%,#ef86d0 63% 78%,#9a7be8 78% 91%,#67b3ef 91% 100%);position:relative}
+.donut:after{content:"";position:absolute;inset:38px;background:white;border-radius:50%}.total{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;font-size:28px;font-weight:800}
+.row{display:grid;grid-template-columns:24px 1fr auto auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}.dot{width:12px;height:12px;border-radius:50%}
+.entry{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}.entry:last-child{border:0}.entryemoji{font-size:28px}
+.menu{display:grid;gap:12px}.menu button{background:white;border:1px solid var(--line);padding:17px;border-radius:16px;text-align:left;font-size:16px;font-weight:650;color:var(--text)}
+.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(480px,100%);height:72px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);z-index:5}
+.nav{border:0;background:transparent;color:#777795;font-weight:650;font-size:13px}.nav.active{color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(15px);background:#24233d;color:white;padding:12px 18px;border-radius:30px;opacity:0;pointer-events:none;transition:.2s;z-index:10}.toast.show{opacity:1;transform:translateX(-50%)}
+.danger{color:#d84c4c!important}.empty{text-align:center;color:var(--muted);padding:28px}
+@media(min-width:600px){body{padding:20px}.app{border-radius:28px;overflow:hidden;background:var(--bg);box-shadow:0 10px 50px #332c6620}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="main-header">
+  <div class="logo">Mindlog</div>
+  <div class="today-total">Today • <span id="todayTotal">0</span> entries</div>
+</header>
+
+<section id="home" class="screen active">
+  <div class="moods" id="moods"></div>
+</section>
+
+<section id="stats" class="screen">
+  <h2>My Stats</h2>
+  <div class="tabs">
+    <button class="tab active" onclick="setPeriod('day',this)">1 Day</button>
+    <button class="tab" onclick="setPeriod('week',this)">1 Week</button>
+    <button class="tab" onclick="setPeriod('month',this)">1 Month</button>
+    <button class="tab" onclick="setPeriod('3month',this)">3 Months</button>
+  </div>
+  <div class="card stats-main"><div id="periodText" class="sub"></div><div class="donut"><div class="total" id="total">0</div></div><div id="rows"></div></div>
+</section>
+
+<section id="more" class="screen">
+  <h2>More</h2>
+  <div class="menu">
+    <button onclick="show('stats')">📊 &nbsp; My Stats</button>
+    <button onclick="alert('Mindlog settings are kept simple.\nYour mood data stays on this device.')">⚙️ &nbsp; Settings</button>
+    <button onclick="if(confirm('Delete all Mindlog data?')){localStorage.removeItem('mindlog_entries');render();toast('All data cleared')}">🗑️ &nbsp; Clear All Data</button>
+    <button onclick="alert('Mindlog\nSimple personal mood tracker\nOffline • No login')">ℹ️ &nbsp; About</button>
+  </div>
+</section>
+
+<nav class="bottom">
+  <button class="nav active" onclick="show('home')">⌂<br>Home</button>
+  <button class="nav" onclick="show('stats')">▥<br>Stats</button>
+  <button class="nav" onclick="show('more')">•••<br>More</button>
+</nav>
+<div id="toast" class="toast"></div>
+</div>
+
+<script>
+const moods=[
+ {id:'calm',name:'Calm',emoji:'🧘',bg:'#dff8e9',color:'#66d39a'},
+ {id:'fear',name:'Fear',emoji:'🫣',bg:'#fff0c9',color:'#ffd467'},
+ {id:'anger',name:'Anger',emoji:'🤬',bg:'#ffe0df',color:'#ff756f'},
+ {id:'sensual',name:'Sensual',emoji:'🫦',bg:'#ffe1f5',color:'#ef86d0'},
+ {id:'pain',name:'Pain',emoji:'😞',bg:'#e9e0ff',color:'#9a7be8'},
+ {id:'ego',name:'Ego',emoji:'👑',bg:'#dff0ff',color:'#67b3ef'}
+];
+let period='day';
+function data(){return JSON.parse(localStorage.getItem('mindlog_entries')||'[]')}
+function saveData(a){localStorage.setItem('mindlog_entries',JSON.stringify(a))}
+function keyDate(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+function addMood(id){
+ let a=data(); a.push({id,time:Date.now()}); saveData(a); render(); toast(moods.find(x=>x.id===id).emoji+' '+moods.find(x=>x.id===id).name+' saved!');
+}
+function inPeriod(ts){
+ const now=new Date(), d=new Date(ts), diff=(keyDate(now)-keyDate(d))/86400000;
+ return period==='day'?diff===0:period==='week'?diff>=0&&diff<7:period==='month'?diff>=0&&diff<30:diff>=0&&diff<90;
+}
+function setPeriod(p,el){period=p;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderStats()}
+function render(){
+ document.getElementById('moods').innerHTML=moods.map(m=>`<button class="mood" style="--mood-bg:${m.bg}" onclick="addMood('${m.id}')"><span class="emoji">${m.emoji}</span>${m.name}</button>`).join('');
+ let today=data().filter(x=>inPeriod(x.time));
+ document.getElementById('todayTotal').textContent=today.length;
+ renderStats();
+}
+function renderStats(){
+ let a=data().filter(x=>inPeriod(x.time)), counts=Object.fromEntries(moods.map(m=>[m.id,0])); a.forEach(x=>counts[x.id]++);
+ let total=a.length; document.getElementById('total').textContent=total;
+ let names={day:'Today',week:'Last 7 days',month:'Last 30 days', '3month':'Last 90 days'}; document.getElementById('periodText').textContent=names[period];
+ let stops=0, parts=moods.map(m=>{let p=total?counts[m.id]/total*100:0,s=`${m.color} ${stops}% ${stops+p}%`;stops+=p;return s}).join(',');
+ document.querySelector('.donut').style.background=total?`conic-gradient(${parts})`:'#e9e8f2';
+ document.getElementById('rows').innerHTML=total?moods
+ .map(m=>({...m,count:counts[m.id],pct:counts[m.id]/total*100}))
+ .sort((a,b)=>b.pct-a.pct || b.count-a.count)
+ .map(m=>`<div class="row"><span class="dot" style="background:${m.color}"></span><span>${m.emoji} ${m.name}</span><b>${m.count}</b><span>${Math.round(m.pct)}%</span></div>`).join('')
+ :' <div class="empty">No mood entries for this period.</div>';
+}
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));let i={home:0,stats:1,more:2}[id];document.querySelectorAll('.nav')[i].classList.add('active');if(id==='stats')renderStats()}
+function toast(t){let e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1400)}
+render();
+</script>
+</body>
+</html>
